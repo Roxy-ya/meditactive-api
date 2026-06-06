@@ -278,4 +278,45 @@ describe("Goal intervals API", () => {
 
     expect(response.status).toBe(204);
   });
+
+  test("POST /api/goal-intervals/:id/goals should return 400 when goalId is missing", async () => {
+    const response = await request(app)
+      .post("/api/goal-intervals/1/goals")
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.errors).toContain("Id obiettivo è obbligatorio");
+  });
+
+  test("POST /api/goal-intervals/:id/goals should return 409 when database detects duplicate association", async () => {
+    const interval = {
+      id: 1,
+      userId: 1,
+      goals: [],
+    };
+
+    const goal = {
+      id: 1,
+      title: "Meditare 10 minuti al giorno",
+    };
+
+    const duplicateError = new Error("Duplicate entry");
+    duplicateError.code = "ER_DUP_ENTRY";
+
+    sinon.stub(goalIntervalRepository, "findById").resolves(interval);
+    sinon.stub(goalRepository, "findById").resolves(goal);
+    sinon.stub(goalIntervalRepository, "findGoalAssociation").resolves(null);
+    sinon
+      .stub(goalIntervalRepository, "addGoalToInterval")
+      .rejects(duplicateError);
+
+    const response = await request(app)
+      .post("/api/goal-intervals/1/goals")
+      .send({
+        goalId: 1,
+      });
+
+    expect(response.status).toBe(409);
+  });
 });

@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const ApiError = require("../utils/ApiError");
 
 /* Funzione per mappare gli intervalli con i relativi obiettivi */
 const mapIntervalsWithGoals = (rows) => {
@@ -165,17 +166,24 @@ const remove = async (id) => {
 
 /* Funzione per aggiungere un obiettivo a un intervallo */
 const addGoalToInterval = async (intervalId, goalId) => {
-  const [result] = await db.execute(
-    `INSERT INTO goal_interval_goals (interval_id, goal_id)
-     VALUES (?, ?)`,
-    [intervalId, goalId]
-  );
+  try {
+    const [result] = await db.execute(
+      `INSERT INTO goal_interval_goals (interval_id, goal_id)
+       VALUES (?, ?)`,
+      [intervalId, goalId]
+    );
 
-  return {
-    id: result.insertId,
-    intervalId: Number(intervalId),
-    goalId: Number(goalId),
-  };
+    return {
+      id: result.insertId,
+      intervalId: Number(intervalId),
+      goalId: Number(goalId),
+    };
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      throw new ApiError(409, "Goal is already associated to this interval");
+    }
+    throw error;
+  }
 };
 
 /* Funzione per rimuovere un obiettivo da un intervallo */

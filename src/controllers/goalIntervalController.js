@@ -5,6 +5,8 @@ const {
   validateGoalIntervalPayload,
   validateGoalIntervalFilters,
 } = require("../validators/goalIntervalValidator");
+const {   validateGoalAssociationPayload,
+} = require("../validators/goalAssociationValidator");
 const ApiError = require("../utils/ApiError");
 
 /* Funzione per ottenere tutti gli intervalli di obiettivi */
@@ -112,12 +114,13 @@ const deleteGoalInterval = async (req, res) => {
 /* Funzione per aggiungere un obiettivo a un intervallo */
 const addGoalToInterval = async (req, res) => {
   const { id } = req.params;
-  const { goalId } = req.body;
+  const errors = validateGoalAssociationPayload(req.body);
 
-  if (!goalId) {
-    throw new ApiError(400, "Validation failed", ["Goal id is required"]);
+  if (errors.length > 0) {
+    throw new ApiError(400, "Validation failed", errors);
   }
 
+  const goalId = Number(req.body.goalId);
   const interval = await goalIntervalRepository.findById(id);
 
   if (!interval) {
@@ -130,10 +133,7 @@ const addGoalToInterval = async (req, res) => {
     throw new ApiError(404, "Goal not found");
   }
 
-  const existingAssociation = await goalIntervalRepository.findGoalAssociation(
-    id,
-    goalId
-  );
+  const existingAssociation = await goalIntervalRepository.findGoalAssociation(id, goalId);
 
   if (existingAssociation) {
     throw new ApiError(409, "Goal is already associated to this interval");
